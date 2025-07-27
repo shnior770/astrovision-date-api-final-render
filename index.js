@@ -4,8 +4,8 @@
 
     const express = require('express');
     const cors = require('cors');
-    // *** התיקון הקריטי כאן: ייבוא ישיר של המחלקות והפונקציות הנדרשות ***
-    const { HDate, GregorianDate, HebrewDate, getMonthFromName } = require('@hebcal/core');
+    // ייבוא המחלקות הנדרשות בלבד
+    const { HDate, GregorianDate, HebrewDate } = require('@hebcal/core');
 
     const app = express();
     app.use(cors());
@@ -68,8 +68,15 @@
             const hebrewYear = parseInt(hyear, 10);
             const hebrewDay = parseInt(hday, 10);
 
-            // *** שימוש נכון בפונקציה getMonthFromName לאחר הייבוא הישיר שלה ***
-            const hebrewMonthNum = getMonthFromName(hmonth);
+            // *** התיקון הקריטי כאן: מפה מפורשת של חודשים עבריים למספרים ***
+            // זה עוקף את הצורך בפונקציה getMonthFromName
+            const hebrewMonthMap = {
+                'תשרי': 1, 'חשון': 2, 'מרחשון': 2, 'כסלו': 3, 'טבת': 4, 'שבט': 5,
+                'אדר': 6, 'אדר א': 6, 'אדר ב': 7, 'ניסן': 8, 'אייר': 9, 'סיון': 10,
+                'תמוז': 11, 'אב': 12, 'מנחם אב': 12, 'אלול': 13
+            };
+            const hebrewMonthNum = hebrewMonthMap[hmonth];
+
 
             console.log(`[DEBUG] Parsed: hyear=${hebrewYear}, hday=${hebrewDay}, hmonthNum=${hebrewMonthNum}`);
 
