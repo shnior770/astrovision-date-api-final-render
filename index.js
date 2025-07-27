@@ -4,8 +4,8 @@
 
     const express = require('express');
     const cors = require('cors');
-    // ייבוא המחלקות הנדרשות בלבד
-    const { HDate, GregorianDate, HebrewDate } = require('@hebcal/core');
+    // *** התיקון הקריטי כאן: ייבוא כל ספריית hebcal/core כאובייקט אחד ***
+    const Hebcal = require('@hebcal/core');
 
     const app = express();
     app.use(cors());
@@ -33,8 +33,8 @@
             return res.status(400).json({ error: 'Invalid Gregorian date provided.' });
         }
 
-        // המרה לתאריך עברי באמצעות HDate
-        const hdate = new HDate(standardDate);
+        // המרה לתאריך עברי באמצעות Hebcal.HDate
+        const hdate = new Hebcal.HDate(standardDate);
 
         res.json({
           gregorian: `${day}/${month}/${year}`,
@@ -68,15 +68,8 @@
             const hebrewYear = parseInt(hyear, 10);
             const hebrewDay = parseInt(hday, 10);
 
-            // *** התיקון הקריטי כאן: מפה מפורשת של חודשים עבריים למספרים ***
-            // זה עוקף את הצורך בפונקציה getMonthFromName
-            const hebrewMonthMap = {
-                'תשרי': 1, 'חשון': 2, 'מרחשון': 2, 'כסלו': 3, 'טבת': 4, 'שבט': 5,
-                'אדר': 6, 'אדר א': 6, 'אדר ב': 7, 'ניסן': 8, 'אייר': 9, 'סיון': 10,
-                'תמוז': 11, 'אב': 12, 'מנחם אב': 12, 'אלול': 13
-            };
-            const hebrewMonthNum = hebrewMonthMap[hmonth];
-
+            // שימוש נכון בפונקציה getMonthFromName מהאובייקט הראשי Hebcal
+            const hebrewMonthNum = Hebcal.getMonthFromName(hmonth);
 
             console.log(`[DEBUG] Parsed: hyear=${hebrewYear}, hday=${hebrewDay}, hmonthNum=${hebrewMonthNum}`);
 
@@ -85,8 +78,8 @@
                 return res.status(400).json({ error: `שם חודש עברי לא חוקי: '${hmonth}'. אנא השתמש בשם מלא (לדוגמה: "תשרי", "אב").` });
             }
 
-            // יצירת אובייקט תאריך עברי באמצעות HebrewDate.create
-            const hd = HebrewDate.create(hebrewYear, hebrewMonthNum, hebrewDay);
+            // יצירת אובייקט תאריך עברי באמצעות Hebcal.HebrewDate.create
+            const hd = Hebcal.HebrewDate.create(hebrewYear, hebrewMonthNum, hebrewDay);
 
             console.log(`[DEBUG] Created HDate object: ${hd}`);
 
