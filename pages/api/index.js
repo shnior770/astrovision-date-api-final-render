@@ -1,40 +1,71 @@
-// file: /opt/render/project/src/pages/api/index.js
+    // file: /opt/render/project/src/pages/api/index.js
 
-// ייבוא פונקציות הנדרשות מהספרייה @hebcal/hebcal-js
-import { HDate, Locale } from '@hebcal/hebcal-js';
+    // ייבוא HebrewDate מהספרייה @hebcal/core (תיקון השם)
+    import { HebrewDate } from '@hebcal/core';
 
-// הגדרת פונקציית ה-handler עבור בקשות HTTP
-export default async function handler(req, res) {
-  // הגדרת כותרות CORS כדי לאפשר גישה מכל מקור (לצורך בדיקה ופיתוח)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // ייבוא מודול Express ליצירת שרת אינטרנט
+    const express = require('express');
+    // ייבוא מודול CORS לטיפול בבקשות Cross-Origin
+    const cors = require('cors');
 
-  // טיפול בבקשות OPTIONS (נדרש עבור בקשות Preflight של CORS)
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+    // יצירת מופע של אפליקציית Express
+    const app = express();
 
-  // בדיקה ששיטת הבקשה היא GET
-  if (req.method !== 'GET') {
-    // אם לא GET, מחזירים שגיאה 405 (Method Not Allowed)
-    return res.status(405).json({ message: 'Method Not Allowed' });
-  }
+    // הפעלת CORS לכל הבקשות
+    app.use(cors());
 
-  try {
-    // יצירת אובייקט תאריך עברי עבור התאריך הנוכחי
-    const today = new HDate();
+    // הגדרת נקודת קצה (endpoint) עבור בקשות GET לנתיב '/api/hebrew-date'
+    app.get('/api/hebrew-date', (req, res) => {
+        try {
+            // קבלת הפרמטרים 'day', 'month', 'year' מכתובת ה-URL של הבקשה
+            const { day, month, year } = req.query;
 
-    // קבלת התאריך העברי בפורמט מילולי (לדוגמה: "כח תמוז ה'תשפ"ה")
-    // Locale.get="" משתמש בברירת המחדל של Hebcal (עברית)
-    const hebrewDate = today.toString();
+            // בדיקה אם כל הפרמטרים הנדרשים קיימים
+            if (!day || !month || !year) {
+                // אם חסרים פרמטרים, שולח תגובת שגיאה 400 (Bad Request)
+                return res.status(400).json({ error: 'חסרים פרמטרים: day, month, year' });
+            }
 
-    // החזרת התאריך העברי כתגובת JSON
-    res.status(200).json({ hebrewDate });
-  } catch (error) {
-    // טיפול בשגיאות שעלולות לקרות במהלך יצירת התאריך
-    console.error('Error generating Hebrew date:', error);
-    res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  }
-}
+            // המרת הפרמטרים למספרים שלמים
+            const gDay = parseInt(day);
+            const gMonth = parseInt(month);
+            const gYear = parseInt(year);
+
+            // בדיקה אם ההמרות הצליחו והערכים הם מספרים תקינים
+            if (isNaN(gDay) || isNaN(gMonth) || isNaN(gYear)) {
+                // אם הערכים אינם מספרים, שולח תגובת שגיאה 400
+                return res.status(400).json({ error: 'פרמטרים day, month, year חייבים להיות מספרים תקינים' });
+            }
+
+            // יצירת אובייקט תאריך לועזי
+            const gregDate = new Date(gYear, gMonth - 1, gDay); // חודשים ב-JavaScript הם מ-0 עד 11
+
+            // יצירת אובייקט תאריך עברי מהתאריך הלועזי
+            const hebrewDate = new HebrewDate(gregDate);
+
+            // שליחת תגובת JSON עם התאריך העברי
+            res.json({
+                hebrewDate: {
+                    day: hebrewDate.day,
+                    month: hebrewDate.monthName, // שם החודש העברי
+                    year: hebrewDate.year,
+                    fullDate: hebrewDate.toString(), // ייצוג מלא של התאריך העברי
+                },
+                gregorianDate: {
+                    day: gDay,
+                    month: gMonth,
+                    year: gYear,
+                }
+            });
+
+        } catch (error) {
+            // טיפול בשגיאות שעלולות לקרות במהלך התהליך
+            console.error('שגיאה ב-API של התאריך העברי:', error);
+            res.status(500).json({ error: 'שגיאה פנימית בשרת', details: error.message });
+        }
+    });
+
+    // ייצוא האפליקציה של Express
+    // זה חשוב כדי ש-Render יוכל להפעיל את השרת
+    module.exports = app;
+    
