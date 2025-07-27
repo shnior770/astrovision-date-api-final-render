@@ -16,35 +16,36 @@
     app.get('/api/convert', (req, res) => {
       try {
         // קבלת הפרמטרים 'year', 'month', 'day' מכתובת ה-URL של הבקשה
-        // וודא שהם מומרים למספרים שלמים בבטחה
-        const gYear = parseInt(req.query.year, 10); // הבסיס 10 מבטיח המרה עשרונית
-        const gMonth = parseInt(req.query.month, 10);
-        const gDay = parseInt(req.query.day, 10);
+        const year = parseInt(req.query.year, 10);
+        const month = parseInt(req.query.month, 10);
+        const day = parseInt(req.query.day, 10);
 
-        // בדיקה אם הפרמטרים הם מספרים תקינים
-        if (isNaN(gYear) || isNaN(gMonth) || isNaN(gDay)) {
-          return res.status(400).json({ error: 'Invalid parameters: year, month, and day must be valid numbers.' });
+        // בדיקה אם הפרמטרים קיימים והם מספרים תקינים
+        if (isNaN(year) || isNaN(month) || isNaN(day) || !req.query.year || !req.query.month || !req.query.day) {
+          return res.status(400).json({ error: 'Missing or invalid parameters: year, month, and day must be valid numbers.' });
         }
 
-        // בדיקה שהפרמטרים קיימים (למרות ש-parseInt יחזיר NaN אם לא קיימים, זה מוסיף בהירות)
-        if (!req.query.year || !req.query.month || !req.query.day) {
-            return res.status(400).json({ error: 'Missing required parameters: year, month, or day.' });
+        // *** שינוי כאן: יצירת אובייקט Date סטנדרטי תחילה ***
+        // חודשים ב-JavaScript הם 0-11, לכן מפחיתים 1 מהחודש הלועזי
+        const standardDate = new Date(year, month - 1, day);
+
+        // בדיקה אם התאריך שנוצר תקף (לדוגמה, 30 בפברואר לא יהיה תקף)
+        if (isNaN(standardDate.getTime())) {
+            return res.status(400).json({ error: 'Invalid Gregorian date provided.' });
         }
 
-        // יצירת תאריך לועזי באמצעות GregorianDate
-        const gregDate = new GregorianDate(gYear, gMonth, gDay);
-        // המרה לתאריך עברי באמצעות HDate
-        const hdate = new HDate(gregDate);
+        // המרה לתאריך עברי באמצעות HDate, המקבלת אובייקט Date סטנדרטי
+        const hdate = new HDate(standardDate);
 
         res.json({
-          gregorian: `${gDay}/${gMonth}/${gYear}`,
+          gregorian: `${day}/${month}/${year}`,
           hebrew: hdate.renderGematriya() // לדוגמה: "כח תמוז ה'תשפ"ה"
         });
 
       } catch (error) {
         // טיפול בשגיאות שעלולות לקרות במהלך התהליך
-        console.error('Error in /api/convert:', error);
-        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        console.error('Error in /api/convert:', error); // ודא שזה מודפס ללוגים
+        res.status(500).json({ error: 'Internal Server Error', message: error.message }); // החזרת הודעת השגיאה ב-API
       }
     });
 
