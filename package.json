@@ -1,0 +1,15 @@
+    {
+      "name": "astrovision-date-api-cli",
+      "version": "1.0.0",
+      "description": "API for converting Gregorian and Hebrew dates",
+      "main": "pages/api/index.js",
+      "type": "module",
+      "scripts": {
+        "build": "echo 'No build step needed for functions'",
+        "start": "node pages/api/index.js"
+      },
+      "dependencies": {
+        "@hebcal/core": "^4.0.0"
+      }
+    }
+    
