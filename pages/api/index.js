@@ -1,51 +1,32 @@
     // pages/api/index.js
-    // זהו קובץ ה-API הראשי להמרת תאריכים.
-    // Vercel מזהה אוטומטית קבצים בתיקיית pages/api כ-Serverless Functions.
+    // זהו קובץ ה-API הראשי להמרת תאריכים, מותאם לפריסה כ-Web Service ב-Render.
+    // הוא משתמש ב-Express.js כדי ליצור שרת HTTP שמקשיב לפורט.
 
-    // ייבוא ספריית התאריכים העבריים
-    // שימו לב: כאן נשתמש בייבוא דינמי כדי לטעון את הספריה רק כאשר הפונקציה נקראת.
-    // זה עוזר לשמור על גודל קטן של הפונקציה ולטעון רק מה שצריך.
-    let HebrewDate;
+    import express from 'express';
+    import { HebrewDate } from '@hebcal/core';
+    import cors from 'cors'; // ייבוא ספריית CORS
 
-    export default async function handler(req, res) {
-      // הגדרת כותרי CORS כדי לאפשר גישה מכל מקור (לצורך בדיקה).
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const app = express();
+    const port = process.env.PORT || 3000; // Render מספק את הפורט דרך משתנה סביבה
 
-      // טיפול בבקשות OPTIONS (נדרש עבור CORS preflight requests)
-      if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-      }
+    // שימוש ב-CORS כדי לאפשר בקשות מכל מקור
+    app.use(cors());
 
-      // ודא שהבקשה היא POST
-      if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method Not Allowed', message: 'Only POST requests are supported.' });
-      }
+    // שימוש ב-express.json לניתוח גוף בקשות JSON
+    app.use(express.json());
 
-      // ודא שגוף הבקשה קיים
-      if (!req.body) {
-        return res.status(400).json({ error: 'Bad Request', message: 'Request body is missing.' });
-      }
+    // נקודת קצה לבדיקת תקינות (Health Check)
+    app.get('/api/health', (req, res) => {
+      res.status(200).json({ status: 'healthy', message: 'API is running' });
+    });
 
+    // נקודת קצה להמרת תאריכים (POST request)
+    app.post('/api', (req, res) => {
       const { direction, year, month, day } = req.body;
 
       // ודא שכל הפרמטרים הנדרשים קיימים
       if (!direction || !year || !month || !day) {
         return res.status(400).json({ error: 'Bad Request', message: 'Missing required parameters: direction, year, month, or day.' });
-      }
-
-      // טען את ספריית HebrewDate רק פעם אחת
-      if (!HebrewDate) {
-        try {
-          // נסה לייבא את הספרייה מ-npm.
-          // ב-Vercel, התלות הזו תותקן אוטומטית מ-package.json.
-          const { HebrewDate: ImportedHebrewDate } = await import('@hebcal/core');
-          HebrewDate = ImportedHebrewDate;
-        } catch (e) {
-          console.error('Failed to import @hebcal/core:', e);
-          return res.status(500).json({ error: 'Server Error', message: 'Failed to load date conversion library.' });
-        }
       }
 
       let result;
@@ -69,15 +50,7 @@
             gregorianDate: `${y}-${m}-${d}`
           };
         } else if (direction === 'hebrew-to-gregorian') {
-          // יש לוודא שהחודש העברי הוא מספר או שם חודש תקין
-          // @hebcal/core מצפה למספר חודש עבור המרה מעברי ללועזי
-          let hebrewMonthNum = m; // נניח ש-m הוא כבר מספר חודש
-          // אם m הוא שם חודש, נצטרך למפות אותו למספר
-          // לדוגמה: אם m הוא "Nisan", נצטרך למצוא את המספר 1
-          // לצורך פשטות, נניח כרגע ש-m הוא מספר.
-          // אם תצטרך תמיכה בשמות חודשים, נוכל להוסיף לוגיקה למיפוי.
-
-          const hd = HebrewDate.create(y, hebrewMonthNum, d);
+          const hd = HebrewDate.create(y, m, d); // מניח ש-m הוא מספר חודש עברי
           if (!hd) {
             return res.status(400).json({ error: 'Bad Request', message: 'Invalid Hebrew date provided.' });
           }
@@ -97,5 +70,10 @@
         console.error('Error during date conversion:', error);
         res.status(500).json({ error: 'Server Error', message: 'An error occurred during date conversion.', details: error.message });
       }
-    }
+    });
+
+    // הפעלת השרת והאזנה לפורט
+    app.listen(port, () => {
+      console.log(`Server listening on port ${port}`);
+    });
     
