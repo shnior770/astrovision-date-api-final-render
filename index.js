@@ -4,7 +4,8 @@
 
     const express = require('express');
     const cors = require('cors');
-    const { HDate, GregorianDate } = require('@hebcal/core'); // שימוש ב-require כי זה CommonJS
+    // ייבוא הספרייה כולה ואז גישה למחלקות ממנה
+    const Hebcal = require('@hebcal/core');
 
     const app = express();
     app.use(cors());
@@ -28,10 +29,10 @@
           return res.status(400).json({ error: 'Invalid parameters: year, month, day must be numbers' });
         }
 
-        // יצירת תאריך לועזי
-        const gregDate = new GregorianDate(gYear, gMonth, gDay);
-        // המרה לתאריך עברי
-        const hdate = new HDate(gregDate);
+        // יצירת תאריך לועזי באמצעות Hebcal.GregorianDate
+        const gregDate = new Hebcal.GregorianDate(gYear, gMonth, gDay);
+        // המרה לתאריך עברי באמצעות Hebcal.HDate
+        const hdate = new Hebcal.HDate(gregDate);
 
         res.json({
           gregorian: `${gDay}/${gMonth}/${gYear}`,
@@ -43,7 +44,6 @@
         res.status(500).json({ error: 'Internal Server Error', details: error.message });
       }
     });
-
 
     // נקודת קצה לבדיקת תקינות (Health Check)
     app.get('/api/health', (req, res) => {
