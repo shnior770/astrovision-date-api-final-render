@@ -68,8 +68,9 @@ app.get('/api/convert-hebrew', (req, res) => {
         const hebrewYear = parseInt(hyear, 10);
         const hebrewDay = parseInt(hday, 10);
 
-        // שימוש נכון בפונקציה getMonthFromName מהאובייקט הראשי Hebcal
-        const hebrewMonthNum = Hebcal.getMonthFromName(hmonth);
+        // *** התיקון הקריטי כאן: גישה נכונה לפונקציה getMonthFromName ***
+        // היא פונקציה סטטית של המחלקה HebrewDate בתוך האובייקט Hebcal
+        const hebrewMonthNum = Hebcal.HebrewDate.getMonthFromName(hmonth);
 
         console.log(`[DEBUG] Parsed: hyear=${hebrewYear}, hday=${hebrewDay}, hmonthNum=${hebrewMonthNum}`);
 
