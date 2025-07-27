@@ -4,8 +4,8 @@
 
     const express = require('express');
     const cors = require('cors');
-    // ייבוא ישיר של המחלקות HDate, GregorianDate ו-HebrewDate (לצורך המרה מעברי)
-    const { HDate, GregorianDate, HebrewDate } = require('@hebcal/core');
+    // ייבוא כל ספריית hebcal/core כאובייקט אחד
+    const Hebcal = require('@hebcal/core');
 
     const app = express();
     app.use(cors());
@@ -33,8 +33,8 @@
             return res.status(400).json({ error: 'Invalid Gregorian date provided.' });
         }
 
-        // המרה לתאריך עברי באמצעות HDate
-        const hdate = new HDate(standardDate);
+        // המרה לתאריך עברי באמצעות Hebcal.HDate
+        const hdate = new Hebcal.HDate(standardDate);
 
         res.json({
           gregorian: `${day}/${month}/${year}`,
@@ -63,17 +63,15 @@
             const hebrewYear = parseInt(hyear, 10);
             const hebrewDay = parseInt(hday, 10);
 
-            // המרת שם החודש העברי למספר חודש פנימי של hebcal
-            // HebrewDate.getMonthFromName מחזירה את מספר החודש (1-13)
-            const hebrewMonthNum = HebrewDate.getMonthFromName(hmonth);
+            // המרת שם החודש העברי למספר חודש פנימי של hebcal באמצעות Hebcal.HebrewDate.getMonthFromName
+            const hebrewMonthNum = Hebcal.HebrewDate.getMonthFromName(hmonth);
 
             if (hebrewMonthNum === undefined) {
                 return res.status(400).json({ error: `שם חודש עברי לא חוקי: '${hmonth}'. אנא השתמש בשם מלא (לדוגמה: "תשרי", "אב").` });
             }
 
-            // יצירת אובייקט תאריך עברי באמצעות HebrewDate.create
-            // זוהי שיטה מומלצת ובטוחה יותר ליצירת תאריך עברי
-            const hd = HebrewDate.create(hebrewYear, hebrewMonthNum, hebrewDay);
+            // יצירת אובייקט תאריך עברי באמצעות Hebcal.HebrewDate.create
+            const hd = Hebcal.HebrewDate.create(hebrewYear, hebrewMonthNum, hebrewDay);
 
             if (!hd) { // בדיקה אם התאריך העברי שנוצר אינו תקף
                 return res.status(400).json({ error: 'תאריך עברי לא חוקי.' });
