@@ -15,18 +15,20 @@
     // דוגמה לשימוש: /api/convert?year=2024&month=7&day=28
     app.get('/api/convert', (req, res) => {
       try {
-        const { year, month, day } = req.query;
+        // קבלת הפרמטרים 'year', 'month', 'day' מכתובת ה-URL של הבקשה
+        // וודא שהם מומרים למספרים שלמים בבטחה
+        const gYear = parseInt(req.query.year, 10); // הבסיס 10 מבטיח המרה עשרונית
+        const gMonth = parseInt(req.query.month, 10);
+        const gDay = parseInt(req.query.day, 10);
 
-        if (!year || !month || !day) {
-          return res.status(400).json({ error: 'Missing parameters: year, month, day' });
+        // בדיקה אם הפרמטרים הם מספרים תקינים
+        if (isNaN(gYear) || isNaN(gMonth) || isNaN(gDay)) {
+          return res.status(400).json({ error: 'Invalid parameters: year, month, and day must be valid numbers.' });
         }
 
-        const gYear = parseInt(year);
-        const gMonth = parseInt(month);
-        const gDay = parseInt(day);
-
-        if (isNaN(gYear) || isNaN(gMonth) || isNaN(gDay)) {
-          return res.status(400).json({ error: 'Invalid parameters: year, month, day must be numbers' });
+        // בדיקה שהפרמטרים קיימים (למרות ש-parseInt יחזיר NaN אם לא קיימים, זה מוסיף בהירות)
+        if (!req.query.year || !req.query.month || !req.query.day) {
+            return res.status(400).json({ error: 'Missing required parameters: year, month, or day.' });
         }
 
         // יצירת תאריך לועזי באמצעות GregorianDate
@@ -40,6 +42,7 @@
         });
 
       } catch (error) {
+        // טיפול בשגיאות שעלולות לקרות במהלך התהליך
         console.error('Error in /api/convert:', error);
         res.status(500).json({ error: 'Internal Server Error', details: error.message });
       }
