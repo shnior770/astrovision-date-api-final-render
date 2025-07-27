@@ -44,6 +44,7 @@ app.get('/api/convert', (req, res) => {
   } catch (error) {
     // טיפול בשגיאות שעלולות לקרות במהלך התהליך
     console.error('Error in /api/convert (Gregorian to Hebrew):', error);
+    console.error('Stack Trace:', error.stack); // הדפסת Stack Trace
     res.status(500).json({ error: 'Internal Server Error', message: error.message });
   }
 });
@@ -104,7 +105,8 @@ app.get('/api/convert-hebrew', (req, res) => {
         });
     } catch (error) {
         console.error('שגיאה בהמרת תאריך עברי (Hebrew to Gregorian):', error);
-        res.status(500).json({ error: 'שגיאה פנימית בשרת בהמרת תאריך עברי.', details: error.message });
+        console.error('Stack Trace:', error.stack); // הדפסת Stack Trace
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
     }
 });
 
