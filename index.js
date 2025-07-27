@@ -1,61 +1,109 @@
-    // index.js
-    // זהו קובץ ה-API הראשי, מותאם לפריסה כ-Web Service ב-Render.
-    // הוא משתמש ב-Express.js כדי ליצור שרת HTTP שמקשיב לפורט.
+// ייבוא הספריות הנדרשות
+const express = require('express');
+const cors = require('cors');
+const { HDate, HebrewCalendar } = require('@hebcal/core');
 
-    const express = require('express');
-    const cors = require('cors');
-    // ייבוא ישיר של המחלקות HDate ו-GregorianDate מהספרייה @hebcal/core
-    const { HDate, GregorianDate } = require('@hebcal/core');
+// יצירת אפליקציית Express
+const app = express();
 
-    const app = express();
-    app.use(cors());
-    app.use(express.json()); // לטיפול בבקשות POST עם JSON body (אם נרצה להוסיף בעתיד)
+// הגדרת CORS לאפשר בקשות מכל מקור (לצורך פיתוח)
+// ביישום אמיתי, מומלץ להגביל את המקורות המותרים
+app.use(cors());
 
-    // נקודת קצה להמרת תאריכים (GET request)
-    // דוגמה לשימוש: /api/convert?year=2024&month=7&day=28
-    app.get('/api/convert', (req, res) => {
-      try {
-        // קבלת הפרמטרים 'year', 'month', 'day' מכתובת ה-URL של הבקשה
-        const year = parseInt(req.query.year, 10);
-        const month = parseInt(req.query.month, 10);
-        const day = parseInt(req.query.day, 10);
+// הגדרת נקודת קצה לבדיקת תקינות השרת
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'healthy' });
+});
 
-        // בדיקה אם הפרמטרים קיימים והם מספרים תקינים
-        if (isNaN(year) || isNaN(month) || isNaN(day) || !req.query.year || !req.query.month || !req.query.day) {
-          return res.status(400).json({ error: 'Missing or invalid parameters: year, month, and day must be valid numbers.' });
-        }
+// נקודת קצה להמרת תאריך לועזי לתאריך עברי
+// דוגמה לבקשה: /api/convert?year=2025&month=7&day=28
+app.get('/api/convert', (req, res) => {
+    const { year, month, day } = req.query;
 
-        // *** שינוי כאן: יצירת אובייקט Date סטנדרטי תחילה ***
-        // חודשים ב-JavaScript הם 0-11, לכן מפחיתים 1 מהחודש הלועזי
-        const standardDate = new Date(year, month - 1, day);
+    // בדיקת קלט
+    if (!year || !month || !day) {
+        return res.status(400).json({ error: 'שגיאה: יש לספק שנה, חודש ויום לועזיים.' });
+    }
 
-        // בדיקה אם התאריך שנוצר תקף (לדוגמה, 30 בפברואר לא יהיה תקף)
-        if (isNaN(standardDate.getTime())) {
-            return res.status(400).json({ error: 'Invalid Gregorian date provided.' });
-        }
+    try {
+        const gy = parseInt(year);
+        const gm = parseInt(month);
+        const gd = parseInt(day);
 
-        // המרה לתאריך עברי באמצעות HDate, המקבלת אובייקט Date סטנדרטי
-        const hdate = new HDate(standardDate);
+        // יצירת אובייקט תאריך לועזי
+        const hdate = new HDate(new Date(gy, gm - 1, gd)); // חודשים ב-Date הם 0-11
+
+        // פורמט תאריך לועזי
+        const gregorianFormatted = `${gd}/${gm}/${gy}`;
+
+        // פורמט תאריך עברי (לדוגמה: "א׳ תשרי תשפ״ה")
+        const hebrewFormatted = hdate.toString();
 
         res.json({
-          gregorian: `${day}/${month}/${year}`,
-          hebrew: hdate.renderGematriya() // לדוגמה: "כח תמוז ה'תשפ"ה"
+            gregorian: gregorianFormatted,
+            hebrew: hebrewFormatted
         });
+    } catch (error) {
+        console.error('שגיאה בהמרת תאריך לועזי:', error);
+        res.status(500).json({ error: 'שגיאה פנימית בשרת בהמרת תאריך לועזי.' });
+    }
+});
 
-      } catch (error) {
-        // טיפול בשגיאות שעלולות לקרות במהלך התהליך
-        console.error('Error in /api/convert:', error); // ודא שזה מודפס ללוגים
-        res.status(500).json({ error: 'Internal Server Error', message: error.message }); // החזרת הודעת השגיאה ב-API
-      }
-    });
+// נקודת קצה חדשה להמרת תאריך עברי לתאריך לועזי
+// דוגמה לבקשה: /api/convert-hebrew?hyear=5785&hmonth=אב&hday=3
+// הערה: יש להעביר את שם החודש העברי בעברית מלאה (לדוגמה: "תשרי", "אב", "ניסן")
+app.get('/api/convert-hebrew', (req, res) => {
+    const { hyear, hmonth, hday } = req.query;
 
-    // נקודת קצה לבדיקת תקינות (Health Check)
-    app.get('/api/health', (req, res) => {
-      res.json({ status: 'healthy' });
-    });
+    // בדיקת קלט
+    if (!hyear || !hmonth || !hday) {
+        return res.status(400).json({ error: 'שגיאה: יש לספק שנה, חודש ויום עבריים.' });
+    }
 
-    // הגדרת הפורט שהשרת יאזין לו
-    // Render מספק את הפורט דרך משתנה הסביבה PORT
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    
+    try {
+        const hebrewYear = parseInt(hyear);
+        const hebrewDay = parseInt(hday);
+
+        // המרת שם החודש העברי למספר חודש פנימי של hebcal
+        // יש לוודא שהשמות תואמים לאלו של hebcal/core
+        const hebrewMonthMap = {
+            'תשרי': 1, 'חשון': 2, 'מרחשון': 2, 'כסלו': 3, 'טבת': 4, 'שבט': 5,
+            'אדר': 6, 'אדר א': 6, 'אדר ב': 7, 'ניסן': 8, 'אייר': 9, 'סיון': 10,
+            'תמוז': 11, 'אב': 12, 'מנחם אב': 12, 'אלול': 13
+        };
+        const hebrewMonthNum = hebrewMonthMap[hmonth];
+
+        if (!hebrewMonthNum) {
+            return res.status(400).json({ error: 'שם חודש עברי לא חוקי. אנא השתמש בשם מלא (לדוגמה: "תשרי", "אב").' });
+        }
+
+        // יצירת אובייקט תאריך עברי
+        const hd = new HDate(hebrewDay, hebrewMonthNum, hebrewYear);
+
+        // המרה לתאריך לועזי
+        const gregorianDate = hd.greg();
+
+        // פורמט תאריך לועזי
+        const gregorianFormatted = `${gregorianDate.getDate()}/${gregorianDate.getMonth() + 1}/${gregorianDate.getFullYear()}`;
+
+        // פורמט תאריך עברי (לצורך אימות)
+        const hebrewFormatted = hd.toString();
+
+        res.json({
+            hebrew: hebrewFormatted,
+            gregorian: gregorianFormatted
+        });
+    } catch (error) {
+        console.error('שגיאה בהמרת תאריך עברי:', error);
+        res.status(500).json({ error: 'שגיאה פנימית בשרת בהמרת תאריך עברי.' });
+    }
+});
+
+
+// הגדרת פורט השרת
+const PORT = process.env.PORT || 3000;
+
+// הפעלת השרת
+app.listen(PORT, () => {
+    console.log(`שרת פועל בפורט ${PORT}`);
+});
