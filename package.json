@@ -6,11 +6,10 @@
       "type": "commonjs",
       "scripts": {
         "start": "node index.js"
-      },
-      "dependencies": {
-        "@hebcal/core": "^2.4.1",
-        "express": "^4.18.2",
-        "cors": "^2.8.5"
-      }
+"dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.6.1"
+}
     }
     
