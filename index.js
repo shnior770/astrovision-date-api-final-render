@@ -4,8 +4,8 @@
 
     const express = require('express');
     const cors = require('cors');
-    // ייבוא המחלקות הנדרשות בלבד
-    const { HDate, GregorianDate, HebrewDate } = require('@hebcal/core');
+    // ייבוא כל ספריית hebcal/core כאובייקט אחד
+    const Hebcal = require('@hebcal/core');
 
     const app = express();
     app.use(cors());
@@ -33,8 +33,12 @@
             return res.status(400).json({ error: 'Invalid Gregorian date provided.' });
         }
 
-        // המרה לתאריך עברי באמצעות HDate
-        const hdate = new HDate(standardDate);
+        // המרה לתאריך עברי באמצעות Hebcal.HDate
+        // ודא ש-Hebcal.HDate קיים
+        if (!Hebcal || typeof Hebcal.HDate !== 'function') {
+            throw new Error('Hebcal.HDate is not available. Library import issue.');
+        }
+        const hdate = new Hebcal.HDate(standardDate);
 
         res.json({
           gregorian: `${day}/${month}/${year}`,
@@ -68,15 +72,14 @@
             const hebrewYear = parseInt(hyear, 10);
             const hebrewDay = parseInt(hday, 10);
 
-            // *** התיקון הקריטי כאן: מפה מפורשת של חודשים עבריים למספרים ***
-            // זה עוקף את הצורך בפונקציה getMonthFromName מהספרייה
+            // מפה מפורשת של חודשים עבריים למספרים
+            // זה עוקף את הצורך בפונקציה getMonthFromName מהספרייה, שהתגלתה כבעייתית ב-CommonJS
             const hebrewMonthMap = {
                 'תשרי': 1, 'חשון': 2, 'מרחשון': 2, 'כסלו': 3, 'טבת': 4, 'שבט': 5,
                 'אדר': 6, 'אדר א': 6, 'אדר ב': 7, 'ניסן': 8, 'אייר': 9, 'סיון': 10,
                 'תמוז': 11, 'אב': 12, 'מנחם אב': 12, 'אלול': 13
             };
             const hebrewMonthNum = hebrewMonthMap[hmonth];
-
 
             console.log(`[DEBUG] Parsed: hyear=${hebrewYear}, hday=${hebrewDay}, hmonthNum=${hebrewMonthNum}`);
 
@@ -85,8 +88,16 @@
                 return res.status(400).json({ error: `שם חודש עברי לא חוקי: '${hmonth}'. אנא השתמש בשם מלא (לדוגמה: "תשרי", "אב").` });
             }
 
-            // יצירת אובייקט תאריך עברי באמצעות HebrewDate.create
-            const hd = HebrewDate.create(hebrewYear, hebrewMonthNum, hebrewDay);
+            // יצירת אובייקט תאריך עברי באמצעות Hebcal.HebrewDate.create
+            // *** התיקון הקריטי כאן: גישה ל-HebrewDate דרך Hebcal, ובדיקה מפורשת ***
+            let hd;
+            if (Hebcal && typeof Hebcal.HebrewDate === 'function' && typeof Hebcal.HebrewDate.create === 'function') {
+                 hd = Hebcal.HebrewDate.create(hebrewYear, hebrewMonthNum, hebrewDay);
+            } else {
+                console.error('[DEBUG] Hebcal.HebrewDate class or its create method is not available as expected.');
+                // נזרוק שגיאה מפורשת יותר אם זה קורה
+                throw new Error('HebrewDate creation failed: Library component missing or incorrectly loaded.');
+            }
 
             console.log(`[DEBUG] Created HDate object: ${hd}`);
 
