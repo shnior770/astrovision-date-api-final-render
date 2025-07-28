@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch'); // Using node-fetch for server-side HTTP requests
-const Hebcal = require('hebcal'); // Assuming hebcal library is installed
+const Hebcal = require('@hebcal/core'); // Using the correct package name for hebcal library
 
 const app = express();
 const PORT = process.env.PORT || 10000; // Render provides PORT environment variable
