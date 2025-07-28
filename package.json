@@ -1,7 +1,7 @@
 {
   "name": "astrovision-date-api-prod",
   "version": "1.0.0",
-  "description": "API for converting Gregorian and Hebrew dates",
+  "description": "API for converting Gregorian and Hebrew dates using Hebcal.com REST API",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
