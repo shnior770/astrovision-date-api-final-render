@@ -1,113 +1,129 @@
-    // index.js
-    // זהו קובץ ה-API הראשי, מותאם לפריסה כ-Web Service ב-Render.
-    // הוא משתמש ב-Express.js כדי ליצור שרת HTTP שמקשיב לפורט.
+const express = require('express');
+const cors = require('cors');
+const fetch = require('node-fetch'); // Using node-fetch for server-side HTTP requests
+const Hebcal = require('hebcal'); // Assuming hebcal library is installed
 
-    const express = require('express');
-    const cors = require('cors');
-    const fetch = require('node-fetch'); // נדרש עבור קריאות HTTP חיצוניות ב-Node.js
+const app = express();
+const PORT = process.env.PORT || 10000; // Render provides PORT environment variable
 
-    const app = express();
-    app.use(cors());
-    app.use(express.json());
+app.use(cors()); // Enable CORS for all routes
+app.use(express.json()); // Enable JSON body parsing
 
-    // נקודת קצה לבדיקת תקינות השרת
-    app.get('/api/health', (req, res) => {
-        res.status(200).json({ status: 'healthy' });
-    });
+// Mapping Hebrew month names to Hebcal's numerical representation
+// Note: Hebcal.Month enum values are 1 for Tishrei, 2 for Cheshvan, ..., 13 for Elul
+const hebrewMonthNames = {
+    "תשרי": 1, "חשון": 2, "כסלו": 3, "טבת": 4, "שבט": 5, "אדר": 6, "אדר א": 6, "אדר ב": 7,
+    "ניסן": 8, "אייר": 9, "סיון": 10, "תמוז": 11, "אב": 12, "אלול": 13
+};
 
-    // נקודת קצה להמרת תאריך לועזי לתאריך עברי באמצעות REST API של Hebcal.com
-    // דוגמה לבקשה: /api/convert?year=2025&month=7&day=28
-    app.get('/api/convert', async (req, res) => {
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'healthy' });
+});
+
+// Endpoint to convert Gregorian date to Hebrew date
+app.get('/api/convert', async (req, res) => {
+    try {
         const { year, month, day } = req.query;
 
-        // בדיקת קלט
         if (!year || !month || !day) {
-            return res.status(400).json({ error: 'שגיאה: יש לספק שנה, חודש ויום לועזיים.' });
+            return res.status(400).json({ error: 'חובה לספק שנה לועזית (year), חודש לועזי (month) ויום לועזי (day).' });
         }
 
-        try {
-            // בניית ה-URL לקריאה ל-REST API של Hebcal.com
-            const hebcalApiUrl = `https://www.hebcal.com/converter?cfg=json&gy=${year}&gm=${month}&gd=${day}&g2h=1`;
+        const gYear = parseInt(year);
+        const gMonth = parseInt(month);
+        const gDay = parseInt(day);
 
-            // ביצוע הקריאה ל-REST API של Hebcal.com
-            const response = await fetch(hebcalApiUrl);
-            const data = await response.json();
-
-            // בדיקה אם ה-API החיצוני החזיר שגיאה
-            if (data.error) {
-                console.error('Error from Hebcal API (Gregorian to Hebrew):', data.error);
-                return res.status(500).json({ error: 'שגיאה בהמרת תאריך באמצעות שירות חיצוני.', details: data.error });
-            }
-
-            // החזרת הנתונים המומרים
-            res.json({
-                gregorian: `${day}/${month}/${year}`,
-                hebrew: data.hebrew // Hebcal API מחזיר את התאריך העברי בשדה 'hebrew'
-            });
-
-        } catch (error) {
-            console.error('שגיאה בהמרת תאריך לועזי לעברי (External API Call):', error);
-            console.error('Stack Trace:', error.stack);
-            res.status(500).json({ error: 'שגיאה פנימית בשרת בהמרת תאריך לועזי.', details: error.message });
+        // Validate date components
+        if (isNaN(gYear) || isNaN(gMonth) || isNaN(gDay)) {
+            return res.status(400).json({ error: 'שנה, חודש או יום לא חוקיים. אנא ספק מספרים.' });
         }
-    });
 
-    // נקודת קצה להמרת תאריך עברי לתאריך לועזי באמצעות REST API של Hebcal.com
-    // דוגמה לבקשה: /api/convert-hebrew?hyear=5785&hmonth=אב&hday=3
-    // הערה: יש להעביר את שם החודש העברי בעברית מלאה (לדוגמה: "תשרי", "אב", "ניסן")
-    app.get('/api/convert-hebrew', async (req, res) => {
+        // Create a Date object for the Gregorian date
+        const gregorianDate = new Date(gYear, gMonth - 1, gDay); // Month is 0-indexed in Date object
+
+        // Convert Gregorian date to Hebrew date using Hebcal
+        const hebrewDate = new Hebcal.HDate(gregorianDate);
+
+        // Format the Gregorian date string
+        const formattedGregorian = `${gDay}/${gMonth}/${gYear}`;
+
+        // Get Hebrew date string from Hebcal
+        const formattedHebrew = hebrewDate.toString();
+
+        res.json({
+            gregorian: formattedGregorian,
+            hebrew: formattedHebrew
+        });
+    } catch (error) {
+        console.error('שגיאה בהמרת תאריך לועזי לעברי:', error);
+        res.status(500).json({ error: 'אירעה שגיאה בשרת בעת המרת תאריך לועזי לעברי.' });
+    }
+});
+
+// Endpoint to convert Hebrew date to Gregorian date
+app.get('/api/convert-hebrew', async (req, res) => {
+    try {
         const { hyear, hmonth, hday } = req.query;
 
-        // בדיקת קלט
+        console.log(`[DEBUG] Received Hebrew date query: hyear=${hyear}, hmonth=${hmonth}, hday=${hday}`);
+
         if (!hyear || !hmonth || !hday) {
-            return res.status(400).json({ error: 'שגיאה: יש לספק שנה, חודש ויום עבריים.' });
+            return res.status(400).json({ error: 'חובה לספק שנת יומן עברי (hyear), חודש עברי (hmonth) ויום עברי (hday).' });
         }
 
+        const parsedHYear = parseInt(hyear);
+        const parsedHDay = parseInt(hday);
+
+        if (isNaN(parsedHYear) || isNaN(parsedHDay)) {
+            return res.status(400).json({ error: 'שנה עברית או יום עברי לא חוקיים. אנא ספק מספרים.' });
+        }
+
+        // Convert Hebrew month name to its numerical representation
+        const hebMonthNum = hebrewMonthNames[hmonth];
+        console.log(`[DEBUG] Converted Hebrew month name "${hmonth}" to number: ${hebMonthNum}`);
+
+        if (hebMonthNum === undefined) {
+            return res.status(400).json({ error: 'שם חודש עברי לא חוקי. אנא וודא איות נכון (לדוגמה: "אדר א", "אדר ב").' });
+        }
+
+        let hebrewDate;
         try {
-            // בניית ה-URL לקריאה ל-REST API של Hebcal.com
-            // שימו לב: hmonth צריך להיות שם החודש באנגלית (לדוגמה: "Av", "Tishrei")
-            // נשתמש במפה כדי להמיר את השם העברי לאנגלית
-            const hebrewMonthMapEnglish = {
-                'תשרי': 'Tishrei', 'חשון': 'Cheshvan', 'מרחשון': 'Cheshvan', 'כסלו': 'Kislev', 'טבת': 'Tevet', 'שבט': 'Shvat',
-                'אדר': 'Adar', 'אדר א': 'Adar I', 'אדר ב': 'Adar II', 'ניסן': 'Nisan', 'אייר': 'Iyyar', 'סיון': 'Sivan',
-                'תמוז': 'Tammuz', 'אב': 'Av', 'מנחם אב': 'Av', 'אלול': 'Elul'
-            };
-            const englishMonthName = hebrewMonthMapEnglish[hmonth];
-
-            if (!englishMonthName) {
-                return res.status(400).json({ error: `שם חודש עברי לא חוקי: '${hmonth}'. אנא השתמש בשם מלא (לדוגמה: "תשרי", "אב").` });
-            }
-
-            const hebcalApiUrl = `https://www.hebcal.com/converter?cfg=json&hy=${hyear}&hm=${englishMonthName}&hd=${hday}&h2g=1`;
-
-            // ביצוע הקריאה ל-REST API של Hebcal.com
-            const response = await fetch(hebcalApiUrl);
-            const data = await response.json();
-
-            // בדיקה אם ה-API החיצוני החזיר שגיאה
-            if (data.error) {
-                console.error('Error from Hebcal API (Hebrew to Gregorian):', data.error);
-                return res.status(500).json({ error: 'שגיאה בהמרת תאריך באמצעות שירות חיצוני.', details: data.error });
-            }
-
-            // החזרת הנתונים המומרים
-            res.json({
-                hebrew: data.hebrew, // Hebcal API מחזיר את התאריך העברי בשדה 'hebrew'
-                gregorian: data.gregorian // Hebcal API מחזיר את התאריך הלועזי בשדה 'gregorian'
-            });
-
-        } catch (error) {
-            console.error('שגיאה בהמרת תאריך עברי ללועזי (External API Call):', error);
-            console.error('Stack Trace:', error.stack);
-            res.status(500).json({ error: 'שגיאה פנימית בשרת בהמרת תאריך עברי.', details: error.message });
+            hebrewDate = new Hebcal.HDate(parsedHDay, hebMonthNum, parsedHYear);
+            console.log(`[DEBUG] Created Hebcal.HDate object: ${hebrewDate.toString()}`);
+        } catch (hdateError) {
+            console.error(`[DEBUG] Error creating Hebcal.HDate: ${hdateError.message}`);
+            return res.status(400).json({ error: `שגיאה ביצירת תאריך עברי: ${hdateError.message}` });
         }
-    });
 
-    // הגדרת פורט השרת
-    const PORT = process.env.PORT || 3000;
+        const gregorianDate = hebrewDate.greg(); // This should return a Date object
+        console.log(`[DEBUG] Gregorian Date object from greg(): ${gregorianDate}`);
 
-    // הפעלת השרת
-    app.listen(PORT, () => {
-        console.log(`שרת פועל בפורט ${PORT}`);
-    });
-    
+        let formattedGregorian = null;
+        if (gregorianDate instanceof Date && !isNaN(gregorianDate)) { // Check if it's a valid Date object
+            const gregYear = gregorianDate.getFullYear();
+            const gregMonth = gregorianDate.getMonth() + 1; // Month is 0-indexed
+            const gregDay = gregorianDate.getDate();
+            formattedGregorian = `${gregDay}/${gregMonth}/${gregYear}`;
+            console.log(`[DEBUG] Formatted Gregorian date: ${formattedGregorian}`);
+        } else {
+            console.warn(`[DEBUG] greg() did not return a valid Date object for Hebrew date: ${hday} ${hmonth} ${hyear}`);
+        }
+
+        // Get Hebrew date string from Hebcal for consistency
+        const formattedHebrew = hebrewDate.toString();
+        console.log(`[DEBUG] Formatted Hebrew date: ${formattedHebrew}`);
+
+        res.json({
+            hebrew: formattedHebrew,
+            gregorian: formattedGregorian // Will be null if conversion failed
+        });
+    } catch (error) {
+        console.error('שגיאה כללית בהמרת תאריך עברי ללועזי:', error);
+        res.status(500).json({ error: 'אירעה שגיאה בשרת בעת המרת תאריך עברי ללועזי.' });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`שרת פועל בפורט ${PORT}`);
+});
