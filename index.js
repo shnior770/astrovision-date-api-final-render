@@ -7,6 +7,14 @@
     // ייבוא כל ספריית hebcal/core כאובייקט אחד
     const Hebcal = require('@hebcal/core');
 
+    // *** לוג דיבוג קריטי: הדפסת האובייקט Hebcal מיד לאחר הייבוא ***
+    console.log('[DEBUG] Hebcal object after require:', Hebcal);
+    console.log('[DEBUG] Type of Hebcal.HDate:', typeof Hebcal.HDate);
+    console.log('[DEBUG] Type of Hebcal.GregorianDate:', typeof Hebcal.GregorianDate);
+    console.log('[DEBUG] Type of Hebcal.HebrewDate:', typeof Hebcal.HebrewDate);
+    console.log('[DEBUG] Type of Hebcal.getMonthFromName:', typeof Hebcal.getMonthFromName);
+
+
     const app = express();
     app.use(cors());
     app.use(express.json()); // לטיפול בבקשות POST עם JSON body (אם נרצה להוסיף בעתיד)
@@ -80,6 +88,7 @@
                 'תמוז': 11, 'אב': 12, 'מנחם אב': 12, 'אלול': 13
             };
             const hebrewMonthNum = hebrewMonthMap[hmonth];
+
 
             console.log(`[DEBUG] Parsed: hyear=${hebrewYear}, hday=${hebrewDay}, hmonthNum=${hebrewMonthNum}`);
 
